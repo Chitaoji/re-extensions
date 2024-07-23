@@ -1,26 +1,26 @@
-# *auto-generated*
-A template repository for building python packages. Please replace `$package` with the package's name in `metadata.yml`.
+# re-extensions
+Extensions for the `re` package.
 
 ## Installation
 ```sh
-*auto-generated*
+$ pip install re-extensions
 ```
 
 ## Requirements
 ```txt
-*auto-generated*
+
 ```
 
 ## See Also
 ### Github repository
-* *auto-generated*
+* https://github.com/Chitaoji/re-extensions/
 
 ### PyPI project
-* *auto-generated*
+* https://pypi.org/project/re-extensions/
 
 ## License
-*auto-generated*
+This project falls under the BSD 3-Clause License.
 
 ## History
-### v0.0.0
+### v0.0.1
 * Initial release.
