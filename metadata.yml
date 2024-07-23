@@ -1,0 +1,10 @@
+# Package meta-data.
+NAME: $package
+VERSION:
+SUMMARY: A template repository for building python packages.
+HOMEPAGE: https://github.com/Chitaoji/$package/
+AUTHOR: Chitaoji
+AUTHOR_EMAIL: 2360742040@qq.com
+REQUIRES_PYTHON: ">=3.8.13"
+REQUIRES: []
+EXTRAS: {}
