@@ -22,5 +22,8 @@ $ pip install re-extensions
 This project falls under the BSD 3-Clause License.
 
 ## History
+### v0.0.2
+* Bugfix for setup.py.
+
 ### v0.0.1
 * Initial release.
