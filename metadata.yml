@@ -1,8 +1,8 @@
 # Package meta-data.
-NAME: $package
+NAME: re-extensions
 VERSION:
-SUMMARY: A template repository for building python packages.
-HOMEPAGE: https://github.com/Chitaoji/$package/
+SUMMARY: Extensions of the `re` package.
+HOMEPAGE: https://github.com/Chitaoji/re-extensions/
 AUTHOR: Chitaoji
 AUTHOR_EMAIL: 2360742040@qq.com
 REQUIRES_PYTHON: ">=3.8.13"
