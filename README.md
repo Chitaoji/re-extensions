@@ -22,6 +22,15 @@ $ pip install re-extensions
 This project falls under the BSD 3-Clause License.
 
 ## History
+### v0.0.3
+* The basic structure of the package is completed, including:
+  * advanced regex operations `smart_search()`, `smart_match()`, `smart_fullmatch()`, `smart_sub()`, `smart_subn()`, and `smart_split()`;
+  * unique regex operations `rsplit()`, `lsplit()`, `line_findall()`, and `real_findall()`;
+  * string operation `counted_strip()`;
+  * utility classes `Smart`, `SmartPattern` and `SmartMatch`;
+  * and other utility functions: `find_right_bracket()`, `find_left_bracket()`, `pattern_inreg()`, `line_count()`, `line_count_iter()` and `word_wrap()`.
+
+
 ### v0.0.2
 * Bugfix for `setup.py`.
 
