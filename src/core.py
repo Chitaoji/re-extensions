@@ -778,9 +778,8 @@ def line_findall(
 ) -> List[Tuple[int, str]]:
     """
     Finds all non-overlapping matches in the string. Differences to
-    `smart_findall()` that it returns a list of 2-tuples containing
-    (nline, substring); nline is the line number of the matched
-    substring.
+    `smart_findall()` that it returns a list of 2-tuples containing (nline,
+    substring); nline is the line number of the matched substring.
 
     Parameters
     ----------
@@ -848,15 +847,18 @@ def real_findall(pattern: "PatternType", string: str, flags=0, linemode=False):
     flags : FlagType, optional
         Regex flags, by default 0.
     linemode : bool, optional
-        Determines whether to calculate the line number of the matched
-        substring, by default False.
+        Determines whether to match by line; if True, returns a list of
+        2-tuples containing (nline, match), and the span of the match
+        object will only be indices within the line (rather than indices
+        within the entire string); by default False.
 
     Returns
     -------
     List[Union[SmartMatch[str], Tuple[int, SmartMatch[str]]]]
-        List of finding result. If `linemode` is False, each list
-        element is a match object; if `linemode` is True, each list
-        element is a 2-tuple containing (nline, substring).
+        List of finding result. If `linemode` is False, each list element
+        is a match object; if `linemode` is True, each list element is a
+        2-tuple containing (nline, match).
+
     """
     finds = []
     nline: int = 1
