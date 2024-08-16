@@ -22,13 +22,18 @@ $ pip install re-extensions
 This project falls under the BSD 3-Clause License.
 
 ## History
+### v0.04
+  * New string operation `quote_collapse()`.
+  * Renamed the namespace `Smart` as `smart`. Run `from re_extensions import smart` to activate this namespace.
+  * Bugfix for `rsplit()`;
+
 ### v0.0.3
 * The basic structure of the package is completed, including:
   * advanced regex operations `smart_search()`, `smart_match()`, `smart_fullmatch()`, `smart_sub()`, `smart_subn()`, and `smart_split()`;
   * unique regex operations `rsplit()`, `lsplit()`, `line_findall()`, and `real_findall()`;
-  * string operation `counted_strip()`;
+  * string operation `counted_strip()`, `line_count()`, `line_count_iter()`, and `word_wrap()`;
   * utility classes `Smart`, `SmartPattern` and `SmartMatch`;
-  * and other utility functions: `find_right_bracket()`, `find_left_bracket()`, `pattern_inreg()`, `line_count()`, `line_count_iter()` and `word_wrap()`.
+  * and other utility functions: `find_right_bracket()`, `find_left_bracket()`, and `pattern_inreg()`.
 
 
 ### v0.0.2

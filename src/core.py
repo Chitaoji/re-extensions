@@ -27,6 +27,7 @@ if TYPE_CHECKING:
 AnyStr = TypeVar("AnyStr", str, bytes)
 
 __all__ = [
+    "quote_collapse",
     "find_right_bracket",
     "find_left_bracket",
     "pattern_inreg",
@@ -47,8 +48,45 @@ __all__ = [
     "smart_findall",
     "line_findall",
     "real_findall",
-    "Smart",
 ]
+
+
+def quote_collapse(string: str) -> str:
+    """
+    Returns a copy of the string with the contents in quotes
+    collapsed.
+
+    """
+    last_quote = ""
+    quotes: List[Tuple[int, int]] = []
+    pos_now, last_pos, len_s = 0, 0, len(string)
+    while pos_now < len_s:
+        if string[pos_now] == "\\":
+            pos_now += 2
+            continue
+        elif (char := string[pos_now]) in "'\"":
+            if last_quote:
+                if last_quote == char:
+                    pos_now += 1
+                    last_quote, last_pos = "", pos_now
+                    continue
+                elif last_quote == char * 3:
+                    pos_now += 3
+                    last_quote, last_pos = "", pos_now
+                    continue
+            elif string[pos_now + 1 : pos_now + 3] == char * 2:
+                quotes.append((last_pos, pos_now))
+                last_quote = char * 3
+                pos_now += 3
+                continue
+            else:
+                quotes.append((last_pos, pos_now))
+                last_quote = char
+        pos_now += 1
+    if last_quote:
+        raise SyntaxError(f"unterminated string literal: {last_quote!r}")
+    quotes.append((last_pos, pos_now))
+    return "".join([string[i:j] for i, j in quotes])
 
 
 def find_right_bracket(string: str, start: int, crossline: bool = False) -> int:
@@ -278,6 +316,9 @@ class SmartPattern(Generic[AnyStr]):
     patterns (such as content within commas) while matching or searching.
     By default "{}" is used to mark where the pattern should be ignored, or
     you can customize it by specifying `mark_ignore=`.
+
+    NOTE: All the groups in the pattern are combined into one group in
+    this case.
 
     Examples
     --------
@@ -672,8 +713,11 @@ def rsplit(
 ) -> List[str]:
     """
     Split the string by the occurrences of the pattern. Differences to
-    `smart_split()` that all groups in the pattern are also returned, each
-    connected with the substring on its right.
+    `smart_split()` that the matched substrings are also returned, each
+    connected with the unmatched substring on its right.
+
+    NOTE: All the groups in the pattern are combined into one group in
+    this case.
 
     Parameters
     ----------
@@ -695,7 +739,7 @@ def rsplit(
     """
     if maxsplit < 0 or not (searched := smart_search(pattern, string, flags=flags)):
         return [string]
-    splits = [string[: searched.start()]]
+    splits = [""]
     stored = ""
     while searched and string:
         if searched.end() == 0:
@@ -725,8 +769,11 @@ def lsplit(
 ) -> List[str]:
     """
     Split the string by the occurrences of the pattern. Differences to
-    `smart_split()` that all groups in the pattern are also returned, each
-    connected with the substring on its left.
+    `smart_split()` that the matched substrings are also returned, each
+    connected with the unmatched substring on its left.
+
+    NOTE: All the groups in the pattern are combined into one group in
+    this case.
 
     Parameters
     ----------
@@ -778,9 +825,11 @@ def line_findall(
 ) -> List[Tuple[int, str]]:
     """
     Finds all non-overlapping matches in the string. Differences to
-    `smart_findall()` that it returns a list of 2-tuples containing
-    (nline, substring); nline is the line number of the matched
-    substring.
+    `smart_findall()` that it returns a list of 2-tuples containing (nline,
+    substring); nline is the line number of the matched substring.
+
+    NOTE: All the groups in the pattern are combined into one group in
+    this case.
 
     Parameters
     ----------
@@ -839,6 +888,9 @@ def real_findall(pattern: "PatternType", string: str, flags=0, linemode=False):
     `smart_findall()` or `line_findall()` that it returns match objects
     instead of matched substrings.
 
+    NOTE: All the groups in the pattern are combined into one group in
+    this case.
+
     Parameters
     ----------
     pattern : Union[str, Pattern[str], SmartPattern[str]]
@@ -848,15 +900,18 @@ def real_findall(pattern: "PatternType", string: str, flags=0, linemode=False):
     flags : FlagType, optional
         Regex flags, by default 0.
     linemode : bool, optional
-        Determines whether to calculate the line number of the matched
-        substring, by default False.
+        Determines whether to match by line; if True, returns a list of
+        2-tuples containing (nline, match), and the span of the match
+        object will only be indices within the line (rather than indices
+        within the entire string); by default False.
 
     Returns
     -------
     List[Union[SmartMatch[str], Tuple[int, SmartMatch[str]]]]
-        List of finding result. If `linemode` is False, each list
-        element is a match object; if `linemode` is True, each list
-        element is a 2-tuple containing (nline, substring).
+        List of finding result. If `linemode` is False, each list element
+        is a match object; if `linemode` is True, each list element is a
+        2-tuple containing (nline, match).
+
     """
     finds = []
     nline: int = 1
@@ -893,26 +948,3 @@ def real_findall(pattern: "PatternType", string: str, flags=0, linemode=False):
         else:
             string = string[span[1] :]
     return finds
-
-
-if TYPE_CHECKING:
-    from ._typing import Smart
-else:
-
-    class Smart:
-        """Namespace for smart operations."""
-
-        Pattern = SmartPattern
-        Match = SmartMatch
-
-        search = smart_search
-        match = smart_match
-        fullmatch = smart_fullmatch
-        sub = smart_sub
-        subn = smart_subn
-        split = smart_split
-        rsplit = rsplit
-        lsplit = lsplit
-        findall = smart_findall
-        line_findall = line_findall
-        real_findall = real_findall
