@@ -1,4 +1,4 @@
-"""Imports * from src"""
+"""Imports from 'src'. This file will be exlcuded from the package."""
 
 from typing import TYPE_CHECKING
 
