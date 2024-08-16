@@ -24,7 +24,7 @@ This project falls under the BSD 3-Clause License.
 ## History
 ### v0.04
   * New string operation `quote_collapse()`.
-  * Renamed the namespace `Smart` as `smart`. Run `from re_extensions import smart` to activate this namespace.
+  * Renamed the namespace `Smart` as `smart`; run `from re_extensions import smart` to activate this namespace.
   * Bugfix for `rsplit()`;
 
 ### v0.0.3
