@@ -48,7 +48,6 @@ __all__ = [
     "smart_findall",
     "line_findall",
     "real_findall",
-    "Smart",
 ]
 
 
@@ -949,26 +948,3 @@ def real_findall(pattern: "PatternType", string: str, flags=0, linemode=False):
         else:
             string = string[span[1] :]
     return finds
-
-
-if TYPE_CHECKING:
-    from ._typing import Smart
-else:
-
-    class Smart:
-        """Namespace for smart operations."""
-
-        Pattern = SmartPattern
-        Match = SmartMatch
-
-        search = smart_search
-        match = smart_match
-        fullmatch = smart_fullmatch
-        sub = smart_sub
-        subn = smart_subn
-        split = smart_split
-        rsplit = rsplit
-        lsplit = lsplit
-        findall = smart_findall
-        line_findall = line_findall
-        real_findall = real_findall
