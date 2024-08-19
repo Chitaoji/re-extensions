@@ -465,9 +465,10 @@ def smart_match(
         return re.match(p, string, flags=f)
     splited = p.split(pattern.mark_ignore)
     pos_now, temp, recorded_group, left = 0, "", "", pattern.ignore[::2]
+    lookahead = "[" + left.replace("[", "\\[") + "]"
     for s in splited[:-1]:
         temp += s
-        if not (matched := re.match(temp, string, flags=f)):
+        if not (matched := __greedy_match(temp, string, lookahead=lookahead, flags=f)):
             return None
         if matched.end() < len(string) and string[matched.end()] in left:
             n = find_right_bracket(string, matched.end(), crossline=crossline)
@@ -482,6 +483,14 @@ def smart_match(
             (0, pos_now + matched.end()), recorded_group + matched.group()
         )
     return None
+
+
+def __greedy_match(
+    pattern: str, string: str, lookahead: str = "", flags: "FlagType" = 0
+) -> "MatchType":
+    if matched := re.match(f"(?:{pattern})(?={lookahead})", string, flags=flags):
+        return matched
+    return re.match(pattern, string, flags=flags)
 
 
 def smart_fullmatch(
