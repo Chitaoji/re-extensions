@@ -25,6 +25,7 @@ This project falls under the BSD 3-Clause License.
 ### v0.04
 * New string operation `quote_collapse()`.
 * Renamed the namespace `Smart` as `smart`; run `from re_extensions import smart` to activate this namespace.
+* Removed `pattern_inreg()` because it has the same function as `re.escape()` - use that instead.
 * Bugfix for `rsplit()`;
 
 ### v0.0.3

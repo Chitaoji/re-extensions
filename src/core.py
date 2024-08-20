@@ -33,7 +33,6 @@ __all__ = [
     "quote_collapse",
     "find_right_bracket",
     "find_left_bracket",
-    "pattern_inreg",
     "line_count",
     "line_count_iter",
     "counted_strip",
@@ -183,24 +182,6 @@ def find_left_bracket(string: str, start: int, crossline: bool = False) -> int:
         if cnt == 0:
             return pos_now
     return -1
-
-
-def pattern_inreg(pattern: str) -> str:
-    """
-    Invalidates the regular expressions in `pattern`.
-
-    Parameters
-    ----------
-    pattern : str
-        Pattern to be invalidated; must be string.
-
-    Returns
-    -------
-    PatternStrVar
-        A new pattern.
-
-    """
-    return re.sub("[$^.\\[\\]*+-?!{},|:#><=\\\\]", lambda x: "\\" + x.group(), pattern)
 
 
 def line_count(string: str) -> int:
