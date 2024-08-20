@@ -13,6 +13,7 @@ from .core import SmartMatch as Match
 from .core import SmartPattern as Pattern
 from .core import line_findall, lsplit, real_findall, rsplit
 from .core import smart_findall as findall
+from .core import smart_finditer as finditer
 from .core import smart_fullmatch as fullmatch
 from .core import smart_match as match
 from .core import smart_search as search

@@ -12,6 +12,7 @@ from typing import (
     Dict,
     Generic,
     Iterable,
+    Iterator,
     List,
     Literal,
     Tuple,
@@ -42,6 +43,7 @@ __all__ = [
     "smart_search",
     "smart_match",
     "smart_fullmatch",
+    "smart_finditer",
     "smart_sub",
     "smart_subn",
     "smart_split",
@@ -219,7 +221,7 @@ def line_count(string: str) -> int:
     return 1 + string.count("\n")
 
 
-def line_count_iter(iterstr: Iterable[str]) -> Iterable[Tuple[int, str]]:
+def line_count_iter(iterstr: Iterable[str]) -> Iterator[Tuple[int, str]]:
     """
     Counts the number of lines in each string, and returns the cumsumed
     values.
@@ -487,10 +489,9 @@ def smart_match(
     if isinstance(pattern, (str, re.Pattern)):
         return re.match(pattern, string, flags=flags)
     p, f = pattern.pattern, pattern.flags | flags
-    crossline = (f & re.DOTALL) > 0
-    if pattern.ignore_mark not in p:
+    if len(splited := p.split(pattern.ignore_mark)) == 1:
         return re.match(p, string, flags=f)
-    splited = p.split(pattern.ignore_mark)
+    crossline = (f & re.DOTALL) > 0
     pos_now, temp, substr, left, groups, gdict = 0, "", "", pattern.ignore[::2], [], {}
     lookahead = "[" + left.replace("[", "\\[") + "]"
     for s in splited[:-1]:
@@ -538,10 +539,13 @@ def smart_fullmatch(
     """
     if isinstance(pattern, (str, re.Pattern)):
         return re.fullmatch(pattern, string, flags=flags)
-    if matched := smart_match(pattern, string, flags=flags):
-        if matched.end() == len(string):
-            return matched
-    return None
+    return smart_match(f"(?:{pattern.pattern})\\Z", string, flags=pattern.flags | flags)
+
+
+def smart_finditer(
+    pattern: "PatternType", string: str, flags: "FlagType" = 0
+) -> Iterable["MatchType"]:
+    pass
 
 
 def smart_findall(
@@ -715,7 +719,7 @@ def smart_split(
     if maxsplit < 0 or not (searched := smart_search(pattern, string, flags=flags)):
         return [string]
     splits = []
-    stored = string[: searched.start()]
+    stored = ""
     while searched and string:
         if searched.end() == 0:
             splits.append(stored)
