@@ -474,10 +474,11 @@ def smart_match(
         return re.match(p, string, flags=f)
     crossline = (f & re.DOTALL) > 0
     pos_now, temp, substr, left, groups, gdict = 0, "", "", pattern.ignore[::2], [], {}
-    lookahead = "[" + left.replace("[", "\\[") + "]"
     for s in splited[:-1]:
         temp += s
-        if matched := re.match(f"(?:{temp})(?={lookahead})", string, flags=f):
+        if not (matched := re.match(temp, string, flags=f)):
+            return None
+        if matched.end() < len(string) and string[matched.end()] in left:
             n = find_right_bracket(string, matched.end(), crossline=crossline)
             if n < 0:
                 return None
@@ -487,8 +488,6 @@ def smart_match(
             groups.extend(matched.groups())
             gdict.update(matched.groupdict())
             temp = ""
-        if not re.match(temp, string, flags=f):
-            return None
     if matched := re.match(temp + splited[-1], string, flags=f):
         groups.extend(matched.groups())
         gdict.update(matched.groupdict())
