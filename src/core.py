@@ -319,9 +319,6 @@ class SmartPattern(Generic[AnyStr]):
     "{}" is used to mark where the substring can be ignored, or you can
     customize it by specifying `mark_ignore=`.
 
-    NOTE: All the groups in the pattern are combined into one group in
-    this case.
-
     Examples
     --------
     * When ignore="()", pattern "a{}b" can match the string "ab", "a(c)b",
@@ -357,6 +354,9 @@ class SmartPattern(Generic[AnyStr]):
 class SmartMatch(Generic[AnyStr]):
     """
     Acts like `re.Match`.
+
+    NOTE: properties `pos`, `endpos`, `lastindex`, `lastgroup`, `re`, and
+    `string` are not implemented for faster speed.
 
     Parameters
     ----------
@@ -403,8 +403,6 @@ class SmartMatch(Generic[AnyStr]):
         """
         Return a dictionary containing all the named subgroups of the match,
         keyed by the subgroup name.
-
-        NOTE: not implemented for faster speed.
 
         """
         if default is None:
