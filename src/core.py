@@ -487,6 +487,8 @@ def smart_match(
             groups.extend(matched.groups())
             gdict.update(matched.groupdict())
             temp = ""
+        if not re.match(temp, string, flags=f):
+            return None
     if matched := re.match(temp + splited[-1], string, flags=f):
         groups.extend(matched.groups())
         gdict.update(matched.groupdict())
@@ -526,7 +528,28 @@ def smart_fullmatch(
 def smart_finditer(
     pattern: "PatternType", string: str, flags: "FlagType" = 0
 ) -> Iterable["MatchType"]:
-    pass
+    """
+    Return an iterator over all non-overlapping matches in the string.
+    Differences to `re.finditer()` that the pattern can be a
+    `SmartPattern` object.
+
+    Parameters
+    ----------
+    pattern : Union[str, Pattern[str], SmartPattern[str]]
+        Regex pattern.
+    string : str
+        String to be searched.
+    flags : FlagType, optional
+        Regex flags, by default 0.
+
+    Returns
+    -------
+    Iterable[MatchType]
+        Iterator of match results.
+
+    """
+    if isinstance(pattern, (str, re.Pattern)):
+        return re.finditer(pattern, string, flags=flags)
 
 
 def smart_findall(
