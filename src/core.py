@@ -7,8 +7,19 @@ NOTE: this module is private. All functions and objects are available in the mai
 """
 
 import re
-from typing import (TYPE_CHECKING, Dict, Generic, Iterable, Iterator, List,
-                    Literal, Tuple, TypeVar, Union, overload)
+from typing import (
+    TYPE_CHECKING,
+    Dict,
+    Generic,
+    Iterable,
+    Iterator,
+    List,
+    Literal,
+    Tuple,
+    TypeVar,
+    Union,
+    overload,
+)
 
 if TYPE_CHECKING:
     from re import Pattern
@@ -473,10 +484,9 @@ def smart_match(
     if len(splited := p.split(pattern.ignore_mark)) == 1:
         return re.match(p, string, flags=f)
     crossline = (f & re.DOTALL) > 0
-    pos_now, temp, substr, left, groups, gdict = 0, "", "", pattern.ignore[::2], [], {}
+    pos_now, substr, left, groups, gdict = 0, "", pattern.ignore[::2], [], {}
     for s in splited[:-1]:
-        temp += s
-        if not (matched := re.match(temp, string, flags=f)):
+        if not (matched := re.match(s, string, flags=f)):
             return None
         if matched.end() < len(string) and string[matched.end()] in left:
             n = find_right_bracket(string, matched.end(), crossline=crossline)
@@ -487,8 +497,7 @@ def smart_match(
             string = string[n:]
             groups.extend(matched.groups())
             gdict.update(matched.groupdict())
-            temp = ""
-    if matched := re.match(temp + splited[-1], string, flags=f):
+    if matched := re.match(splited[-1], string, flags=f):
         groups.extend(matched.groups())
         gdict.update(matched.groupdict())
         return SmartMatch(
