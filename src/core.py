@@ -7,19 +7,8 @@ NOTE: this module is private. All functions and objects are available in the mai
 """
 
 import re
-from typing import (
-    TYPE_CHECKING,
-    Dict,
-    Generic,
-    Iterable,
-    Iterator,
-    List,
-    Literal,
-    Tuple,
-    TypeVar,
-    Union,
-    overload,
-)
+from typing import (TYPE_CHECKING, Dict, Generic, Iterable, Iterator, List,
+                    Literal, Tuple, TypeVar, Union, overload)
 
 if TYPE_CHECKING:
     from re import Pattern
@@ -297,19 +286,30 @@ def counted_strip(string: str) -> Tuple[str, int, int]:
 
 class SmartPattern(Generic[AnyStr]):
     """
-    Similar to `re.Pattern` but it tells the matcher to ignore certain
-    substrings (such as contents within brackets) while matching. By default
-    "{}" is used to mark where the substring can be ignored, or you can
-    customize it by specifying `mark_ignore=`.
+    Similar to `re.Pattern` but it tells the matcher to ignore the contents
+    within brackets while matching.
+
+    By default, "{}" is used to mark where the contents can be ignored, or
+    you can customize it by specifying `mark_ignore=`. Suppose the mark is
+    "{}", pattern "a{}b{}c" roughly equals to "(?>a)P?(?>b)P?(?>c)", where
+    "P" matches a pair of brackets and the contents within the brackets (if
+    exists).
+
+    Presently, the matching does not support lookbehind assertions, so
+    special characters like "^", "\\A", "\\b", "\\B", "(?<=...)", and
+    "(?<!...)" will be removed automatically.
+
+    If you feel confused about the above rules, run `on_earth(pattern)` to
+    see what kind of string on earth will the pattern match.
 
     Examples
     --------
-    * When ignore="()", pattern "a{}b" can match the string "ab", "a(c)b",
-    "a(d(c)e)b", or "a((...(c)...))b", but not "a(b)".
-    * When ignore="()[]", pattern "a{}b" can match the string "a(c)b",
-    or "a[c]b", but not "a(c)[c]b".
+    * When ignore="()", pattern "a{}b" can match the string "ab" or "a(...)b",
+    but not "a(b)".
+    * When ignore="()[]", pattern "a{}b" can match the string "ab", "a(...)b"
+    or "a[...]b", but not "a(...)[...]b".
     * Similarly, when ignore="()[]{}", pattern "a{}b" can match the string
-    "a{c}b", etc.
+    "ab", "a{c}b", etc.
 
     Parameters
     ----------
@@ -699,6 +699,10 @@ def smart_split(
     list containing the resulting substrings. Differences to `re.split()`
     that the pattern can be a `SmartPattern` object.
 
+    NOTE: If the pattern is an instance of `SmartPattern`, any group
+    (...) in the pattern will be regarded as (?:...), so that the
+    substring matched by the group cannot be retrieved.
+
     Parameters
     ----------
     pattern : Union[str, Pattern[str], SmartPattern[str]]
@@ -753,8 +757,9 @@ def rsplit(
     `smart_split()` that the matched substrings are also returned, each
     connected with the unmatched substring on its right.
 
-    NOTE: All the groups in the pattern are combined into one group in
-    this case.
+    NOTE: If the pattern is an instance of `SmartPattern`, any group
+    (...) in the pattern will be regarded as (?:...), so that the
+    substring matched by the group cannot be retrieved.
 
     Parameters
     ----------
@@ -809,8 +814,9 @@ def lsplit(
     `smart_split()` that the matched substrings are also returned, each
     connected with the unmatched substring on its left.
 
-    NOTE: All the groups in the pattern are combined into one group in
-    this case.
+    NOTE: If the pattern is an instance of `SmartPattern`, any group
+    (...) in the pattern will be regarded as (?:...), so that the
+    substring matched by the group cannot be retrieved.
 
     Parameters
     ----------
@@ -865,8 +871,9 @@ def line_findall(
     `smart_findall()` that it returns a list of 2-tuples containing (nline,
     substring); nline is the line number of the matched substring.
 
-    NOTE: All the groups in the pattern are combined into one group in
-    this case.
+    NOTE: If the pattern is an instance of `SmartPattern`, any group
+    (...) in the pattern will be regarded as (?:...), so that the
+    substring matched by the group cannot be retrieved.
 
     Parameters
     ----------
@@ -925,9 +932,6 @@ def real_findall(pattern: "PatternType", string: str, flags=0, linemode=False):
     `smart_findall()` or `line_findall()` that it returns match objects
     instead of matched substrings.
 
-    NOTE: All the groups in the pattern are combined into one group in
-    this case.
-
     Parameters
     ----------
     pattern : Union[str, Pattern[str], SmartPattern[str]]
@@ -967,6 +971,8 @@ def real_findall(pattern: "PatternType", string: str, flags=0, linemode=False):
             matched = SmartMatch(
                 (line_pos + lastline_pos, line_pos + lastline_pos + span[1] - span[0]),
                 group,
+                searched.groups(),
+                searched.groupdict(),
             )
             finds.append((nline, matched))
             nline += group.count("\n")
@@ -975,7 +981,14 @@ def real_findall(pattern: "PatternType", string: str, flags=0, linemode=False):
             else:
                 line_pos += max(lastline_pos + span[1] - span[0], 1)
         else:
-            finds.append(SmartMatch((span[0] + total_pos, span[1] + total_pos), group))
+            finds.append(
+                SmartMatch(
+                    (span[0] + total_pos, span[1] + total_pos),
+                    group,
+                    searched.groups(),
+                    searched.groupdict(),
+                )
+            )
             total_pos += max(span[1], 1)
         if len(string) == 0:
             break
