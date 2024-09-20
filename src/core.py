@@ -10,6 +10,7 @@ import re
 from typing import (
     TYPE_CHECKING,
     Dict,
+    Generator,
     Generic,
     Iterable,
     Iterator,
@@ -537,7 +538,7 @@ def smart_fullmatch(
 
 def smart_finditer(
     pattern: "PatternType", string: str, flags: "FlagType" = 0
-) -> Iterable["MatchType"]:
+) -> Iterator["MatchType"]:
     """
     Return an iterator over all non-overlapping matches in the string.
     Differences to `re.finditer()` that the pattern can be a
@@ -552,14 +553,32 @@ def smart_finditer(
     flags : FlagType, optional
         Regex flags, by default 0.
 
-    Returns
+    Yields
     -------
-    Iterable[MatchType]
-        Iterator of match results.
+    Iterator[MatchType]
+        An iterator over all non-overlapping matches.
 
     """
     if isinstance(pattern, (str, re.Pattern)):
         return re.finditer(pattern, string, flags=flags)
+    return _smart_find_generator(pattern, string, flags=flags)
+
+
+def _smart_find_generator(
+    pattern: "PatternType", string: str, flags: "FlagType" = 0
+) -> Generator["MatchType", None, None]:
+    pos_now = 0
+    while searched := smart_search(pattern, string, flags=flags):
+        yield SmartMatch(
+            (pos_now + searched.start(), pos_now + searched.end()),
+            searched.group(),
+            searched.groups(),
+            searched.groupdict(),
+        )
+        if not string:
+            break
+        pos_now += (n := 1 if searched.end() == 0 else searched.end())
+        string = string[n:]
 
 
 def smart_findall(
