@@ -24,10 +24,11 @@ This project falls under the BSD 3-Clause License.
 ## History
 ### v0.0.5
 * Removed `pattern_inreg()` because it has the same functionality as `re.escape()` - use that instead.
+* New advanced regex operation `smart_finditer()`.
 
 ### v0.04
 * New string operation `quote_collapse()`.
-* Renamed the namespace `Smart` as `smart`; run `from re_extensions import smart` to activate this namespace.
+* Renamed the namespace `Smart` as `smart`. Please run `from re_extensions import smart` to activate this namespace.
 * Bugfix for `rsplit()`;
 
 ### v0.0.3
