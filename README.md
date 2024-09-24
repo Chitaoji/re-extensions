@@ -39,7 +39,6 @@ This project falls under the BSD 3-Clause License.
   * utility classes `Smart`, `SmartPattern` and `SmartMatch`;
   * and other utility functions: `find_right_bracket()`, `find_left_bracket()`, and `pattern_inreg()`.
 
-
 ### v0.0.2
 * Bugfix for `setup.py`.
 
