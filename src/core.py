@@ -50,6 +50,7 @@ __all__ = [
     "rsplit",
     "lsplit",
     "smart_findall",
+    "line_finditer",
     "line_findall",
     "real_findall",
 ]
@@ -553,7 +554,7 @@ def smart_finditer(
     flags : FlagType, optional
         Regex flags, by default 0.
 
-    Yields
+    Returns
     -------
     Iterator[MatchType]
         An iterator over all non-overlapping matches.
@@ -891,6 +892,66 @@ def lsplit(
     # breaked or not searched
     splits.append(stored + string)
     return splits
+
+
+def line_finditer(
+    pattern: "PatternType", string: str, flags: "FlagType" = 0
+) -> Iterator[Tuple[int, "MatchType"]]:
+    """
+    Return an iterator over all non-overlapping matches in the string.
+    Differences to `smart_finditer()` that it returns an iterator of
+    2-tuples containing (nline, match); nline is the line number of the
+    matched substring.
+
+    NOTE: If the pattern is an instance of `SmartPattern`, any group
+    (...) in the pattern will be regarded as (?:...), so that the
+    substring matched by the group cannot be retrieved.
+
+    Parameters
+    ----------
+    pattern : Union[str, Pattern[str], SmartPattern[str]]
+        Regex pattern.
+    string : str
+        String to be searched.
+    flags : FlagType, optional
+        Regex flags, by default 0.
+
+    Returns
+    -------
+    Iterator[Tuple[int, MatchType]]
+        List of 2-tuples containing (nline, substring).
+
+    """
+    nline, line_pos = 1, 0
+
+    while searched := smart_search(pattern, string, flags=flags):
+        span, group = searched.span(), searched.group()
+        left = string[: span[0]]
+        lc_left = left.count("\n")
+        nline += lc_left
+        if lc_left > 0:
+            line_pos = 0
+        lastline_pos = len(left) - 1 - left.rfind("\n")
+        matched = SmartMatch(
+            (line_pos + lastline_pos, line_pos + lastline_pos + span[1] - span[0]),
+            group,
+            searched.groups(),
+            searched.groupdict(),
+        )
+        yield (nline, matched)
+        nline += group.count("\n")
+        if "\n" in group:
+            line_pos = len(group) - 1 - group.rfind("\n")
+        else:
+            line_pos += max(lastline_pos + span[1] - span[0], 1)
+
+        if len(string) == 0:
+            break
+        if span[1] == 0:
+            nline += 1 if string[0] == "\n" else 0
+            string = string[1:]
+        else:
+            string = string[span[1] :]
 
 
 def line_findall(
