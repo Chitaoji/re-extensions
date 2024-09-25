@@ -949,6 +949,7 @@ def line_finditer(
             break
         if span[1] == 0:
             nline += 1 if string[0] == "\n" else 0
+            line_pos = 0 if string[0] == "\n" else line_pos
             string = string[1:]
         else:
             string = string[span[1] :]
