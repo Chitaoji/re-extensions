@@ -9,8 +9,11 @@ NOTE: this module is private. All functions and objects are available in the mai
 import re
 from typing import (
     TYPE_CHECKING,
+    Dict,
+    Generator,
     Generic,
     Iterable,
+    Iterator,
     List,
     Literal,
     Tuple,
@@ -25,12 +28,12 @@ if TYPE_CHECKING:
     from ._typing import FlagType, MatchType, PatternType, ReplType
 
 AnyStr = TypeVar("AnyStr", str, bytes)
+T = TypeVar("T")
 
 __all__ = [
     "quote_collapse",
     "find_right_bracket",
     "find_left_bracket",
-    "pattern_inreg",
     "line_count",
     "line_count_iter",
     "counted_strip",
@@ -40,12 +43,14 @@ __all__ = [
     "smart_search",
     "smart_match",
     "smart_fullmatch",
+    "smart_finditer",
     "smart_sub",
     "smart_subn",
     "smart_split",
     "rsplit",
     "lsplit",
     "smart_findall",
+    "line_finditer",
     "line_findall",
     "real_findall",
 ]
@@ -181,24 +186,6 @@ def find_left_bracket(string: str, start: int, crossline: bool = False) -> int:
     return -1
 
 
-def pattern_inreg(pattern: str) -> str:
-    """
-    Invalidates the regular expressions in `pattern`.
-
-    Parameters
-    ----------
-    pattern : str
-        Pattern to be invalidated; must be string.
-
-    Returns
-    -------
-    PatternStrVar
-        A new pattern.
-
-    """
-    return re.sub("[$^.\\[\\]*+-?!{},|:#><=\\\\]", lambda x: "\\" + x.group(), pattern)
-
-
 def line_count(string: str) -> int:
     """
     Counts the number of lines in the string; returns (number of "\\n") + 1.
@@ -217,7 +204,7 @@ def line_count(string: str) -> int:
     return 1 + string.count("\n")
 
 
-def line_count_iter(iterstr: Iterable[str]) -> Iterable[Tuple[int, str]]:
+def line_count_iter(iterstr: Iterable[str]) -> Iterator[Tuple[int, str]]:
     """
     Counts the number of lines in each string, and returns the cumsumed
     values.
@@ -312,29 +299,37 @@ def counted_strip(string: str) -> Tuple[str, int, int]:
 
 class SmartPattern(Generic[AnyStr]):
     """
-    Similar to `re.Pattern` but it tells the matcher to ignore certain
-    patterns (such as content within commas) while matching or searching.
-    By default "{}" is used to mark where the pattern should be ignored, or
-    you can customize it by specifying `mark_ignore=`.
+    Similar to `re.Pattern` but it tells the matcher to ignore the contents
+    within brackets while matching.
 
-    NOTE: All the groups in the pattern are combined into one group in
-    this case.
+    By default, "{}" is used to mark where the contents can be ignored, or
+    you can customize it by specifying `mark_ignore=`. Suppose the mark is
+    "{}", pattern "a{}b" roughly equals to "(?>a)P?(?>b)|(?>ab)", where "P"
+    matches a pair of brackets and the contents within the brackets (if
+    exists).
+
+    Presently, the matching does not support lookbehind assertions, so
+    special characters like "^", "\\A", "\\b", "\\B", "(?<=...)", and
+    "(?<!...)" will be removed automatically.
+
+    If you feel confused about the above rules, run `on_earth(pattern)` to
+    see what kind of string on earth will the pattern match.
 
     Examples
     --------
-    * When ignore="()", pattern "a{}b" can match the string "ab" or "a(c)b",
-    but not "a(b)c".
-    * When ignore="()[]", pattern "a{}b" can match the string "ab", "a(c)b",
-    "a[c]b", or "a(c)[c]b", but not "a(b)[b]c".
+    * When ignore="()", pattern "a{}b" can match the string "ab" or "a(...)b",
+    but not "a(b)".
+    * When ignore="()[]", pattern "a{}b" can match the string "ab", "a(...)b"
+    or "a[...]b", but not "a(...)[...]b".
     * Similarly, when ignore="()[]{}", pattern "a{}b" can match the string
-    "a(c)[c]{c}b", but not "a(b)[b]{b}c".
+    "ab", "a{c}b", etc.
 
     Parameters
     ----------
     ignore : ignore, optional
-        Patterns to ignore while searching, by default "()[]{}".
-    mark_ignore : str, optional
-        Marks where the pattern should be ignored, by default "{}".
+        Patterns to ignore while matching, by default "()[]{}".
+    ignore_mark : str, optional
+        Marks where the substring can be ignored, by default "{}".
 
     """
 
@@ -343,18 +338,21 @@ class SmartPattern(Generic[AnyStr]):
         pattern: Union[AnyStr, "Pattern[AnyStr]"],
         flags: "FlagType" = 0,
         ignore: str = "()[]{}",
-        mark_ignore: str = "{}",
+        ignore_mark: str = "{}",
     ) -> None:
         if isinstance(pattern, re.Pattern):
             pattern, flags = pattern.pattern, pattern.flags | flags
         self.pattern = pattern
         self.flags = flags
-        self.ignore, self.mark_ignore = ignore, mark_ignore
+        self.ignore, self.ignore_mark = ignore, ignore_mark
 
 
 class SmartMatch(Generic[AnyStr]):
     """
     Acts like `re.Match`.
+
+    NOTE: properties `pos`, `endpos`, `lastindex`, `lastgroup`, `re`, and
+    `string` are not implemented for faster speed.
 
     Parameters
     ----------
@@ -365,9 +363,17 @@ class SmartMatch(Generic[AnyStr]):
 
     """
 
-    def __init__(self, span: Tuple[int, int], group: AnyStr) -> None:
+    def __init__(
+        self,
+        span: Tuple[int, int],
+        group: AnyStr,
+        groups: Iterable[AnyStr],
+        groupdict: Dict[str, str],
+    ) -> None:
         self.__span = span
         self.__group = group
+        self.__groups = tuple(groups)
+        self.__groupdict = groupdict
 
     def __repr__(self) -> str:
         return f"<SmartMatch object; span={self.__span}, match={self.__group!r}>"
@@ -380,19 +386,31 @@ class SmartMatch(Generic[AnyStr]):
         return self.__span
 
     def group(self) -> AnyStr:
-        """Group of the match."""
+        """Return one or more subgroups of the match of the match."""
         return self.__group
 
-    def groups(self) -> Tuple[AnyStr, ...]:
-        """Subgroups of the match."""
-        return (self.__group,)
+    def groups(self, default: T = None) -> Tuple[Union[AnyStr, T], ...]:
+        """Return a tuple containing all the subgroups of the match."""
+        if default is None:
+            return self.__groups
+        return tuple(default if x is None else x for x in self.__groups)
+
+    def groupdict(self, default: T = None) -> Dict[str, Union[AnyStr, T]]:
+        """
+        Return a dictionary containing all the named subgroups of the match,
+        keyed by the subgroup name.
+
+        """
+        if default is None:
+            return self.__groupdict
+        return {k: default if v is None else v for k, v in self.__groupdict.items()}
 
     def start(self) -> int:
-        """The indice of the start of the substring matched by `group`."""
+        """Return the indice of the start of the substring matched by `group`."""
         return self.__span[0]
 
     def end(self) -> int:
-        """The indice of the end of the substring matched by `group`."""
+        """Return the indice of the end of the substring matched by `group`."""
         return self.__span[1]
 
 
@@ -421,15 +439,20 @@ def smart_search(
     if isinstance(pattern, (str, re.Pattern)):
         return re.search(pattern, string, flags=flags)
     p, f = pattern.pattern, pattern.flags | flags
-    if pattern.mark_ignore not in p:
+    if pattern.ignore_mark not in p:
         return re.search(p, string, flags=f)
-    to_search = p.partition(pattern.mark_ignore)[0]
+    to_search = p.partition(pattern.ignore_mark)[0]
     pos_now: int = 0
     while string and (searched := re.search(to_search, string, flags=f)):
         pos_now += searched.start()
         string = string[searched.start() :]
         if matched := smart_match(pattern, string, flags=flags):
-            return SmartMatch((pos_now, pos_now + matched.end()), matched.group())
+            return SmartMatch(
+                (pos_now, pos_now + matched.end()),
+                matched.group(),
+                matched.groups(),
+                matched.groupdict(),
+            )
         pos_now += 1
         string = string[1:]
     return None
@@ -460,11 +483,10 @@ def smart_match(
     if isinstance(pattern, (str, re.Pattern)):
         return re.match(pattern, string, flags=flags)
     p, f = pattern.pattern, pattern.flags | flags
-    crossline = (f & re.DOTALL) > 0
-    if pattern.mark_ignore not in p:
+    if len(splited := p.split(pattern.ignore_mark)) == 1:
         return re.match(p, string, flags=f)
-    splited = p.split(pattern.mark_ignore)
-    pos_now, temp, recorded_group, left = 0, "", "", pattern.ignore[::2]
+    crossline = (f & re.DOTALL) > 0
+    pos_now, temp, substr, left, groups, gdict = 0, "", "", pattern.ignore[::2], [], {}
     for s in splited[:-1]:
         temp += s
         if not (matched := re.match(temp, string, flags=f)):
@@ -474,12 +496,16 @@ def smart_match(
             if n < 0:
                 return None
             pos_now += n
-            recorded_group += string[:n]
+            substr += string[:n]
             string = string[n:]
+            groups.extend(matched.groups())
+            gdict.update(matched.groupdict())
             temp = ""
     if matched := re.match(temp + splited[-1], string, flags=f):
+        groups.extend(matched.groups())
+        gdict.update(matched.groupdict())
         return SmartMatch(
-            (0, pos_now + matched.end()), recorded_group + matched.group()
+            (0, pos_now + matched.end()), substr + matched.group(), groups, gdict
         )
     return None
 
@@ -508,10 +534,52 @@ def smart_fullmatch(
     """
     if isinstance(pattern, (str, re.Pattern)):
         return re.fullmatch(pattern, string, flags=flags)
-    if matched := smart_match(pattern, string, flags=flags):
-        if matched.end() == len(string):
-            return matched
-    return None
+    return smart_match(f"(?:{pattern.pattern})\\Z", string, flags=pattern.flags | flags)
+
+
+def smart_finditer(
+    pattern: "PatternType", string: str, flags: "FlagType" = 0
+) -> Iterator["MatchType"]:
+    """
+    Return an iterator over all non-overlapping matches in the string.
+    Differences to `re.finditer()` that the pattern can be a
+    `SmartPattern` object.
+
+    Parameters
+    ----------
+    pattern : Union[str, Pattern[str], SmartPattern[str]]
+        Regex pattern.
+    string : str
+        String to be searched.
+    flags : FlagType, optional
+        Regex flags, by default 0.
+
+    Returns
+    -------
+    Iterator[MatchType]
+        An iterator over all non-overlapping matches.
+
+    """
+    if isinstance(pattern, (str, re.Pattern)):
+        return re.finditer(pattern, string, flags=flags)
+    return _smart_find_generator(pattern, string, flags=flags)
+
+
+def _smart_find_generator(
+    pattern: "PatternType", string: str, flags: "FlagType" = 0
+) -> Generator["MatchType", None, None]:
+    pos_now = 0
+    while searched := smart_search(pattern, string, flags=flags):
+        yield SmartMatch(
+            (pos_now + searched.start(), pos_now + searched.end()),
+            searched.group(),
+            searched.groups(),
+            searched.groupdict(),
+        )
+        if not string:
+            break
+        pos_now += (n := 1 if searched.end() == 0 else searched.end())
+        string = string[n:]
 
 
 def smart_findall(
@@ -662,6 +730,10 @@ def smart_split(
     list containing the resulting substrings. Differences to `re.split()`
     that the pattern can be a `SmartPattern` object.
 
+    NOTE: If the pattern is an instance of `SmartPattern`, any group
+    (...) in the pattern will be regarded as (?:...), so that the
+    substring matched by the group cannot be retrieved.
+
     Parameters
     ----------
     pattern : Union[str, Pattern[str], SmartPattern[str]]
@@ -685,7 +757,7 @@ def smart_split(
     if maxsplit < 0 or not (searched := smart_search(pattern, string, flags=flags)):
         return [string]
     splits = []
-    stored = string[: searched.start()]
+    stored = ""
     while searched and string:
         if searched.end() == 0:
             splits.append(stored)
@@ -716,8 +788,9 @@ def rsplit(
     `smart_split()` that the matched substrings are also returned, each
     connected with the unmatched substring on its right.
 
-    NOTE: All the groups in the pattern are combined into one group in
-    this case.
+    NOTE: If the pattern is an instance of `SmartPattern`, any group
+    (...) in the pattern will be regarded as (?:...), so that the
+    substring matched by the group cannot be retrieved.
 
     Parameters
     ----------
@@ -772,8 +845,9 @@ def lsplit(
     `smart_split()` that the matched substrings are also returned, each
     connected with the unmatched substring on its left.
 
-    NOTE: All the groups in the pattern are combined into one group in
-    this case.
+    NOTE: If the pattern is an instance of `SmartPattern`, any group
+    (...) in the pattern will be regarded as (?:...), so that the
+    substring matched by the group cannot be retrieved.
 
     Parameters
     ----------
@@ -820,6 +894,67 @@ def lsplit(
     return splits
 
 
+def line_finditer(
+    pattern: "PatternType", string: str, flags: "FlagType" = 0
+) -> Iterator[Tuple[int, "MatchType"]]:
+    """
+    Return an iterator over all non-overlapping matches in the string.
+    Differences to `smart_finditer()` that it returns an iterator of
+    2-tuples containing (nline, match); nline is the line number of the
+    matched substring.
+
+    NOTE: If the pattern is an instance of `SmartPattern`, any group
+    (...) in the pattern will be regarded as (?:...), so that the
+    substring matched by the group cannot be retrieved.
+
+    Parameters
+    ----------
+    pattern : Union[str, Pattern[str], SmartPattern[str]]
+        Regex pattern.
+    string : str
+        String to be searched.
+    flags : FlagType, optional
+        Regex flags, by default 0.
+
+    Returns
+    -------
+    Iterator[Tuple[int, MatchType]]
+        List of 2-tuples containing (nline, substring).
+
+    """
+    nline, line_pos = 1, 0
+
+    while searched := smart_search(pattern, string, flags=flags):
+        span, group = searched.span(), searched.group()
+        left = string[: span[0]]
+        lc_left = left.count("\n")
+        nline += lc_left
+        if lc_left > 0:
+            line_pos = 0
+        lastline_pos = len(left) - 1 - left.rfind("\n")
+        matched = SmartMatch(
+            (line_pos + lastline_pos, line_pos + lastline_pos + span[1] - span[0]),
+            group,
+            searched.groups(),
+            searched.groupdict(),
+        )
+        yield (nline, matched)
+        nline += group.count("\n")
+        if "\n" in group:
+            line_pos = len(group) - 1 - group.rfind("\n")
+        else:
+            line_pos += max(lastline_pos + span[1] - span[0], 1)
+
+        if len(string) == 0:
+            break
+        if span[1] == 0:
+            nline += 1 if string[0] == "\n" else 0
+            line_pos = 0 if string[0] == "\n" else line_pos
+            string = string[1:]
+        else:
+            string = string[span[1] :]
+
+
 def line_findall(
     pattern: "PatternType", string: str, flags: "FlagType" = 0
 ) -> List[Tuple[int, str]]:
@@ -828,8 +963,9 @@ def line_findall(
     `smart_findall()` that it returns a list of 2-tuples containing (nline,
     substring); nline is the line number of the matched substring.
 
-    NOTE: All the groups in the pattern are combined into one group in
-    this case.
+    NOTE: If the pattern is an instance of `SmartPattern`, any group
+    (...) in the pattern will be regarded as (?:...), so that the
+    substring matched by the group cannot be retrieved.
 
     Parameters
     ----------
@@ -888,9 +1024,6 @@ def real_findall(pattern: "PatternType", string: str, flags=0, linemode=False):
     `smart_findall()` or `line_findall()` that it returns match objects
     instead of matched substrings.
 
-    NOTE: All the groups in the pattern are combined into one group in
-    this case.
-
     Parameters
     ----------
     pattern : Union[str, Pattern[str], SmartPattern[str]]
@@ -930,6 +1063,8 @@ def real_findall(pattern: "PatternType", string: str, flags=0, linemode=False):
             matched = SmartMatch(
                 (line_pos + lastline_pos, line_pos + lastline_pos + span[1] - span[0]),
                 group,
+                searched.groups(),
+                searched.groupdict(),
             )
             finds.append((nline, matched))
             nline += group.count("\n")
@@ -938,7 +1073,14 @@ def real_findall(pattern: "PatternType", string: str, flags=0, linemode=False):
             else:
                 line_pos += max(lastline_pos + span[1] - span[0], 1)
         else:
-            finds.append(SmartMatch((span[0] + total_pos, span[1] + total_pos), group))
+            finds.append(
+                SmartMatch(
+                    (span[0] + total_pos, span[1] + total_pos),
+                    group,
+                    searched.groups(),
+                    searched.groupdict(),
+                )
+            )
             total_pos += max(span[1], 1)
         if len(string) == 0:
             break
