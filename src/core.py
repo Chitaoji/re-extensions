@@ -7,6 +7,7 @@ NOTE: this module is private. All functions and objects are available in the mai
 """
 
 import re
+import textwrap
 from typing import (
     TYPE_CHECKING,
     Dict,
@@ -245,28 +246,9 @@ def word_wrap(string: str, maximum: int = 80) -> str:
         Wrapped string.
 
     """
-    if maximum < 1:
-        raise ValueError(f"expected maximum > 0, got {maximum} instead")
-    lines: List[str] = []
-    for x in string.splitlines():
-        while True:
-            l, x = __maxsplit(x, maximum=maximum)
-            lines.append(l)
-            if not x:
-                break
-    return "\n".join(lines)
-
-
-def __maxsplit(string: str, maximum: int = 1):
-    head, tail = string, ""
-    if len(string) > maximum:
-        if (i := string.rfind(" ", None, 1 + maximum)) > 0 and (
-            l := string[:i]
-        ).strip():
-            head, tail = l, string[1 + i :]
-        elif (j := string.find(" ", 1 + maximum)) > 0:
-            head, tail = string[:j], string[1 + j :]
-    return head.rstrip(), tail.strip()
+    return "\n".join(
+        textwrap.fill(x, maximum, break_long_words=False) for x in string.splitlines()
+    )
 
 
 def counted_strip(string: str) -> Tuple[str, int, int]:
