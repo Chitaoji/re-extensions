@@ -16,11 +16,9 @@ from typing import (
     Iterable,
     Iterator,
     List,
-    Literal,
     Tuple,
     TypeVar,
     Union,
-    overload,
 )
 
 if TYPE_CHECKING:
@@ -53,7 +51,6 @@ __all__ = [
     "smart_findall",
     "line_finditer",
     "line_findall",
-    "real_findall",
 ]
 
 
@@ -976,94 +973,6 @@ def line_findall(
         finds.append((nline, group))
         nline += group.count("\n")
 
-        if len(string) == 0:
-            break
-        if span[1] == 0:
-            nline += 1 if string[0] == "\n" else 0
-            string = string[1:]
-        else:
-            string = string[span[1] :]
-    return finds
-
-
-@overload
-def real_findall(
-    pattern: "PatternType",
-    string: str,
-    flags: "FlagType" = 0,
-    linemode: Literal[False] = False,
-) -> List[SmartMatch[str]]: ...
-@overload
-def real_findall(
-    pattern: "PatternType",
-    string: str,
-    flags: "FlagType" = 0,
-    linemode: Literal[True] = True,
-) -> List[Tuple[int, SmartMatch[str]]]: ...
-def real_findall(pattern: "PatternType", string: str, flags=0, linemode=False):
-    """
-    Finds all non-overlapping matches in the string. Differences to
-    `smart_findall()` or `line_findall()` that it returns match objects
-    instead of matched substrings.
-
-    Parameters
-    ----------
-    pattern : Union[str, Pattern[str], SmartPattern[str]]
-        Regex pattern.
-    string : str
-        String to be searched.
-    flags : FlagType, optional
-        Regex flags, by default 0.
-    linemode : bool, optional
-        Determines whether to match by line; if True, returns a list of
-        2-tuples containing (nline, match), and the span of the match
-        object will only be indices within the line (rather than indices
-        within the entire string); by default False.
-
-    Returns
-    -------
-    List[Union[SmartMatch[str], Tuple[int, SmartMatch[str]]]]
-        List of finding result. If `linemode` is False, each list element
-        is a match object; if `linemode` is True, each list element is a
-        2-tuple containing (nline, match).
-
-    """
-    finds = []
-    nline: int = 1
-    total_pos: int = 0
-    line_pos: int = 0
-
-    while searched := smart_search(pattern, string, flags=flags):
-        span, group = searched.span(), searched.group()
-        if linemode:
-            left = string[: span[0]]
-            lc_left = left.count("\n")
-            nline += lc_left
-            if lc_left > 0:
-                line_pos = 0
-            lastline_pos = len(left) - 1 - left.rfind("\n")
-            matched = SmartMatch(
-                (line_pos + lastline_pos, line_pos + lastline_pos + span[1] - span[0]),
-                group,
-                searched.groups(),
-                searched.groupdict(),
-            )
-            finds.append((nline, matched))
-            nline += group.count("\n")
-            if "\n" in group:
-                line_pos = len(group) - 1 - group.rfind("\n")
-            else:
-                line_pos += max(lastline_pos + span[1] - span[0], 1)
-        else:
-            finds.append(
-                SmartMatch(
-                    (span[0] + total_pos, span[1] + total_pos),
-                    group,
-                    searched.groups(),
-                    searched.groupdict(),
-                )
-            )
-            total_pos += max(span[1], 1)
         if len(string) == 0:
             break
         if span[1] == 0:
