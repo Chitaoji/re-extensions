@@ -8,18 +8,7 @@ NOTE: this module is private. All functions and objects are available in the mai
 
 import re
 import textwrap
-from typing import (
-    TYPE_CHECKING,
-    Dict,
-    Generator,
-    Generic,
-    Iterable,
-    Iterator,
-    List,
-    Tuple,
-    TypeVar,
-    Union,
-)
+from typing import TYPE_CHECKING, Generator, Generic, Iterable, Iterator, TypeVar, Union
 
 if TYPE_CHECKING:
     from re import Pattern
@@ -61,7 +50,7 @@ def quote_collapse(string: str) -> str:
 
     """
     last_quote = ""
-    quotes: List[Tuple[int, int]] = []
+    quotes: list[tuple[int, int]] = []
     pos_now, last_pos, len_s = 0, 0, len(string)
     while pos_now < len_s:
         if string[pos_now] == "\\":
@@ -202,7 +191,7 @@ def line_count(string: str) -> int:
     return 1 + string.count("\n")
 
 
-def line_count_iter(iterstr: Iterable[str]) -> Iterator[Tuple[int, str]]:
+def line_count_iter(iterstr: Iterable[str]) -> Iterator[tuple[int, str]]:
     """
     Counts the number of lines in each string, and returns the cumsumed
     values.
@@ -214,7 +203,7 @@ def line_count_iter(iterstr: Iterable[str]) -> Iterator[Tuple[int, str]]:
 
     Yields
     ------
-    Tuple[int, str]
+    tuple[int, str]
         Each time, yields the cumsumed number of lines til now together
         with a string found in `iter`, until `iter` is traversed.
 
@@ -248,7 +237,7 @@ def word_wrap(string: str, maximum: int = 80) -> str:
     )
 
 
-def counted_strip(string: str) -> Tuple[str, int, int]:
+def counted_strip(string: str) -> tuple[str, int, int]:
     """
     Return a copy of the string with leading and trailing whitespace
     removed, together with the number of removed leading whitespaces
@@ -261,7 +250,7 @@ def counted_strip(string: str) -> Tuple[str, int, int]:
 
     Returns
     -------
-    Tuple[str, int, int]
+    tuple[str, int, int]
         The new string, the number of removed leading whitespace, and
         the number of removed trailing whitespace.
 
@@ -335,7 +324,7 @@ class SmartMatch(Generic[AnyStr]):
 
     Parameters
     ----------
-    span : Tuple[int, int]
+    span : tuple[int, int]
         The indices of the start and end of the substring matched by `group`.
     group : str
         Group of the match.
@@ -344,10 +333,10 @@ class SmartMatch(Generic[AnyStr]):
 
     def __init__(
         self,
-        span: Tuple[int, int],
+        span: tuple[int, int],
         group: AnyStr,
         groups: Iterable[AnyStr],
-        groupdict: Dict[str, str],
+        groupdict: dict[str, str],
     ) -> None:
         self.__span = span
         self.__group = group
@@ -357,7 +346,7 @@ class SmartMatch(Generic[AnyStr]):
     def __repr__(self) -> str:
         return f"<SmartMatch object; span={self.__span}, match={self.__group!r}>"
 
-    def span(self) -> Tuple[int, int]:
+    def span(self) -> tuple[int, int]:
         """
         The indices of the start and end of the substring matched by `group`.
 
@@ -368,13 +357,13 @@ class SmartMatch(Generic[AnyStr]):
         """Return one or more subgroups of the match of the match."""
         return self.__group
 
-    def groups(self, default: T = None) -> Tuple[Union[AnyStr, T], ...]:
+    def groups(self, default: T = None) -> tuple[Union[AnyStr, T], ...]:
         """Return a tuple containing all the subgroups of the match."""
         if default is None:
             return self.__groups
         return tuple(default if x is None else x for x in self.__groups)
 
-    def groupdict(self, default: T = None) -> Dict[str, Union[AnyStr, T]]:
+    def groupdict(self, default: T = None) -> dict[str, Union[AnyStr, T]]:
         """
         Return a dictionary containing all the named subgroups of the match,
         keyed by the subgroup name.
@@ -563,7 +552,7 @@ def _smart_find_generator(
 
 def smart_findall(
     pattern: "PatternType", string: str, flags: "FlagType" = 0
-) -> List[str]:
+) -> list[str]:
     """
     Returns a list of all non-overlapping matches in the string. Differences
     to `re.findall()` that the pattern can be a `SmartPattern` object.
@@ -579,13 +568,13 @@ def smart_findall(
 
     Returns
     -------
-    List[str]
+    list[str]
         List of all non-overlapping matches.
 
     """
     if isinstance(pattern, (str, re.Pattern)):
         return re.findall(pattern, string, flags=flags)
-    finds: List[str] = []
+    finds: list[str] = []
     while searched := smart_search(pattern, string, flags=flags):
         finds.append(searched.group())
         if not string:
@@ -652,7 +641,7 @@ def smart_subn(
     string: str,
     count: int = 0,
     flags: "FlagType" = 0,
-) -> Tuple[str, int]:
+) -> tuple[str, int]:
     """
     Return a 2-tuple containing (new_string, number); new_string is the string
     obtained by replacing the leftmost non-overlapping occurrences of the
@@ -678,7 +667,7 @@ def smart_subn(
 
     Returns
     -------
-    Tuple[str, int]
+    tuple[str, int]
         (new_string, number).
 
     """
@@ -703,7 +692,7 @@ def smart_subn(
 
 def smart_split(
     pattern: "PatternType", string: str, maxsplit: int = 0, flags: "FlagType" = 0
-) -> List[str]:
+) -> list[str]:
     """
     Split the source string by the occurrences of the pattern, returning a
     list containing the resulting substrings. Differences to `re.split()`
@@ -727,7 +716,7 @@ def smart_split(
 
     Returns
     -------
-    List[str]
+    list[str]
         List containing the resulting substrings.
 
     """
@@ -761,7 +750,7 @@ def smart_split(
 
 def rsplit(
     pattern: "PatternType", string: str, maxsplit: int = 0, flags: "FlagType" = 0
-) -> List[str]:
+) -> list[str]:
     """
     Split the string by the occurrences of the pattern. Differences to
     `smart_split()` that the matched substrings are also returned, each
@@ -785,7 +774,7 @@ def rsplit(
 
     Returns
     -------
-    List[str]
+    list[str]
         List of substrings.
 
     """
@@ -818,7 +807,7 @@ def rsplit(
 
 def lsplit(
     pattern: "PatternType", string: str, maxsplit: int = 0, flags: "FlagType" = 0
-) -> List[str]:
+) -> list[str]:
     """
     Split the string by the occurrences of the pattern. Differences to
     `smart_split()` that the matched substrings are also returned, each
@@ -842,7 +831,7 @@ def lsplit(
 
     Returns
     -------
-    List[str]
+    list[str]
         List of substrings.
 
     """
@@ -875,7 +864,7 @@ def lsplit(
 
 def line_finditer(
     pattern: "PatternType", string: str, flags: "FlagType" = 0
-) -> Iterator[Tuple[int, "MatchType"]]:
+) -> Iterator[tuple[int, "MatchType"]]:
     """
     Return an iterator over all non-overlapping matches in the string.
     Differences to `smart_finditer()` that it returns an iterator of
@@ -897,7 +886,7 @@ def line_finditer(
 
     Returns
     -------
-    Iterator[Tuple[int, MatchType]]
+    Iterator[tuple[int, MatchType]]
         List of 2-tuples containing (nline, substring).
 
     """
@@ -936,7 +925,7 @@ def line_finditer(
 
 def line_findall(
     pattern: "PatternType", string: str, flags: "FlagType" = 0
-) -> List[Tuple[int, str]]:
+) -> list[tuple[int, str]]:
     """
     Finds all non-overlapping matches in the string. Differences to
     `smart_findall()` that it returns a list of 2-tuples containing (nline,
@@ -957,7 +946,7 @@ def line_findall(
 
     Returns
     -------
-    List[Tuple[int, str]]
+    list[tuple[int, str]]
         List of 2-tuples containing (nline, substring).
 
     """
