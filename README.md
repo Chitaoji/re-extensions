@@ -22,8 +22,11 @@ $ pip install re-extensions
 This project falls under the BSD 3-Clause License.
 
 ## History
+### v0.0.7
+* Imported * from the `re_extensions.smart` namespace into the main `re_extensions` namespace.
+
 ### v0.0.6
-* Removed `real_findall()` - use `smart.finditer()` or `smart.line_finditer()` instead.
+* Removed `smart.real_findall()` - use `smart.finditer()` or `smart.line_finditer()` instead.
 
 ### v0.0.5
 * New (advanced) regex operations `smart.finditer()` and `smart.line_finditer()`.

@@ -17,6 +17,8 @@ This project falls under the BSD 3-Clause License.
 from . import core, smart
 from .__version__ import __version__
 from .core import *
+from .smart import *
 
 __all__: list[str] = ["smart"]
 __all__.extend(core.__all__)
+__all__.extend(smart.__all__)
