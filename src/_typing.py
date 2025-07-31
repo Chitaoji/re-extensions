@@ -12,7 +12,7 @@ import loggings
 if TYPE_CHECKING:
     from re import Match, Pattern, RegexFlag
 
-    from .core import SmartMatch, SmartPattern
+    from .smart import SmartMatch, SmartPattern
 
 loggings.warning("this module is not intended to be imported at runtime")
 

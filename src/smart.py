@@ -68,8 +68,8 @@ class SmartPattern(Generic[AnyStr]):
     ----------
     ignore : ignore, optional
         Patterns to ignore while matching, by default "()[]{}".
-    ignore_mark : str, optional
-        Marks where the substring can be ignored, by default "{}".
+    mark : str, optional
+        Marks where the smart pattern should take effect, by default "{}".
 
     """
 
@@ -78,13 +78,13 @@ class SmartPattern(Generic[AnyStr]):
         pattern: Union[AnyStr, "Pattern[AnyStr]"],
         flags: "FlagType" = 0,
         ignore: str = "()[]{}",
-        ignore_mark: str = "{}",
+        mark: str = "{}",
     ) -> None:
         if isinstance(pattern, re.Pattern):
             pattern, flags = pattern.pattern, pattern.flags | flags
         self.pattern = pattern
         self.flags = flags
-        self.ignore, self.ignore_mark = ignore, ignore_mark
+        self.ignore, self.mark = ignore, mark
 
 
 class SmartMatch(Generic[AnyStr]):
@@ -166,7 +166,7 @@ def search(pattern: "PatternType", string: str, flags: "FlagType" = 0) -> "Match
 
     Parameters
     ----------
-    pattern : Union[str, Pattern[str], SmartPattern[str]]
+    pattern : PatternType
         Regex pattern.
     string : str
         String to be searched.
@@ -208,7 +208,7 @@ def match(pattern: "PatternType", string: str, flags: "FlagType" = 0) -> "MatchT
 
     Parameters
     ----------
-    pattern : Union[str, Pattern[str], SmartPattern[str]]
+    pattern : PatternType
         Regex pattern.
     string : str
         String to be searched.
@@ -260,7 +260,7 @@ def fullmatch(
 
     Parameters
     ----------
-    pattern : Union[str, Pattern[str], SmartPattern[str]]
+    pattern : PatternType
         Regex pattern.
     string : str
         String to be searched.
@@ -288,7 +288,7 @@ def finditer(
 
     Parameters
     ----------
-    pattern : Union[str, Pattern[str], SmartPattern[str]]
+    pattern : PatternType
         Regex pattern.
     string : str
         String to be searched.
@@ -330,7 +330,7 @@ def findall(pattern: "PatternType", string: str, flags: "FlagType" = 0) -> list[
 
     Parameters
     ----------
-    pattern : Union[str, Pattern[str], SmartPattern[str]]
+    pattern : PatternType
         Regex pattern.
     string : str
         String to be searched.
@@ -368,9 +368,9 @@ def sub(
 
     Parameters
     ----------
-    pattern : Union[str, Pattern[str], SmartPattern[str]]
+    pattern : PatternType
         Regex pattern.
-    repl : Union[str, Callable[[Match[str]], str]]
+    repl : ReplType
         Speficies the string to replace the patterns. If Callable, should
         be a function that receives the Match object, and gives back
         the replacement string to be used.
@@ -422,9 +422,9 @@ def subn(
 
     Parameters
     ----------
-    pattern : Union[str, Pattern[str], SmartPattern[str]]
+    pattern : PatternType
         Regex pattern.
-    repl : Union[str, Callable[[Match[str]], str]]
+    repl : ReplType
         Speficies the string to replace the patterns. If Callable, should
         be a function that receives the Match object, and gives back
         the replacement string to be used.
@@ -475,7 +475,7 @@ def split(
 
     Parameters
     ----------
-    pattern : Union[str, Pattern[str], SmartPattern[str]]
+    pattern : PatternType
         Regex pattern.
     string : str
         String to be searched.
@@ -533,7 +533,7 @@ def rsplit(
 
     Parameters
     ----------
-    pattern : Union[str, Pattern[str], SmartPattern[str]]
+    pattern : PatternType
         Pattern string.
     string : str
         String to be splitted.
@@ -590,7 +590,7 @@ def lsplit(
 
     Parameters
     ----------
-    pattern : Union[str, Pattern[str], SmartPattern[str]]
+    pattern : PatternType
         Pattern string.
     string : str
         String to be splitted.
@@ -648,7 +648,7 @@ def line_finditer(
 
     Parameters
     ----------
-    pattern : Union[str, Pattern[str], SmartPattern[str]]
+    pattern : PatternType
         Regex pattern.
     string : str
         String to be searched.
@@ -708,7 +708,7 @@ def line_findall(
 
     Parameters
     ----------
-    pattern : Union[str, Pattern[str], SmartPattern[str]]
+    pattern : PatternType
         Regex pattern.
     string : str
         String to be searched.
