@@ -7,7 +7,7 @@ NOTE: this module is not included in the main `re_extensions` namespace - run
 """
 
 import re
-from typing import TYPE_CHECKING, Generator, Generic, Iterable, Iterator, TypeVar, Union
+from typing import TYPE_CHECKING, Generator, Iterator, TypeVar
 
 from .core import find_right_bracket
 
@@ -16,12 +16,11 @@ if TYPE_CHECKING:
 
     from ._typing import FlagType, MatchType, PatternType, ReplType
 
-AnyStr = TypeVar("AnyStr", str, bytes)
+
 T = TypeVar("T")
 
 __all__ = [
     "SmartPattern",
-    "SmartMatch",
     "search",
     "match",
     "fullmatch",
@@ -36,122 +35,53 @@ __all__ = [
     "line_findall",
 ]
 
+SmartMatch = lambda *x: x
 
-class SmartPattern(Generic[AnyStr]):
+
+class SmartPattern:
     """
-    Similar to `re.Pattern` but it tells the matcher to ignore the contents
-    within brackets while matching.
+    Similar to `re.Pattern` but it can "smartly" match the content in a
+    pair of brackets, no matter how many pairs of brackets are contained in
+    the content.
 
-    By default, "{}" is used to mark where the contents can be ignored, or
-    you can customize it by specifying `mark_ignore=`. Suppose the mark is
-    "{}", pattern "a{}b" roughly equals to "(?>a)P?(?>b)|(?>ab)", where "P"
-    matches a pair of brackets and the contents within the brackets (if
-    exists).
-
-    Presently, the matching does not support lookbehind assertions, so
-    special characters like "^", "\\A", "\\b", "\\B", "(?<=...)", and
-    "(?<!...)" will be removed automatically.
-
-    If you feel confused about the above rules, run `on_earth(pattern)` to
-    see what kind of string on earth will the pattern match.
+    "{}" is used to mark where the smart match should take place. Pattern
+    "{()}" matches a pair of brackets and all the contents within the
+    brackets. If you want to match the content within a pair of square
+    brackets or braces, use "{[]}" or "{{}}" instead.
 
     Examples
     --------
-    * When ignore="()", pattern "a{}b" can match the string "ab" or "a(...)b",
-    but not "a(b)".
-    * When ignore="()[]", pattern "a{}b" can match the string "ab", "a(...)b"
-    or "a[...]b", but not "a(...)[...]b".
-    * Similarly, when ignore="()[]{}", pattern "a{}b" can match the string
-    "ab", "a{c}b", etc.
+    * pattern "a{()}b" matches "a(...)b", but not "ab" or "a(b)";
+    * pattern "a{[]}b" matches "a[...]b";
+    * pattern "a{{}}b" matches "a{...}b".
 
     Parameters
     ----------
-    ignore : ignore, optional
-        Patterns to ignore while matching, by default "()[]{}".
-    mark : str, optional
-        Marks where the smart pattern should take effect, by default "{}".
+    pattern : str | Pattern[str]
+        Regex pattern.
+    flags : FlagType, optional
+        Regex flag, by default 0.
 
     """
 
-    def __init__(
-        self,
-        pattern: Union[AnyStr, "Pattern[AnyStr]"],
-        flags: "FlagType" = 0,
-        ignore: str = "()[]{}",
-        mark: str = "{}",
-    ) -> None:
+    def __init__(self, pattern: "str | Pattern[str]", flags: "FlagType" = 0) -> None:
         if isinstance(pattern, re.Pattern):
             pattern, flags = pattern.pattern, pattern.flags | flags
         self.pattern = pattern
         self.flags = flags
-        self.ignore, self.mark = ignore, mark
 
 
-class SmartMatch(Generic[AnyStr]):
-    """
-    Acts like `re.Match`.
-
-    NOTE: properties `pos`, `endpos`, `lastindex`, `lastgroup`, `re`, and
-    `string` are not implemented for faster speed.
-
-    Parameters
-    ----------
-    span : tuple[int, int]
-        The indices of the start and end of the substring matched by `group`.
-    group : str
-        Group of the match.
-
-    """
-
-    def __init__(
-        self,
-        span: tuple[int, int],
-        group: AnyStr,
-        groups: Iterable[AnyStr],
-        groupdict: dict[str, str],
-    ) -> None:
-        self.__span = span
-        self.__group = group
-        self.__groups = tuple(groups)
-        self.__groupdict = groupdict
-
-    def __repr__(self) -> str:
-        return f"<SmartMatch object; span={self.__span}, match={self.__group!r}>"
-
-    def span(self) -> tuple[int, int]:
-        """
-        The indices of the start and end of the substring matched by `group`.
-
-        """
-        return self.__span
-
-    def group(self) -> AnyStr:
-        """Return one or more subgroups of the match of the match."""
-        return self.__group
-
-    def groups(self, default: T = None) -> tuple[Union[AnyStr, T], ...]:
-        """Return a tuple containing all the subgroups of the match."""
-        if default is None:
-            return self.__groups
-        return tuple(default if x is None else x for x in self.__groups)
-
-    def groupdict(self, default: T = None) -> dict[str, Union[AnyStr, T]]:
-        """
-        Return a dictionary containing all the named subgroups of the match,
-        keyed by the subgroup name.
-
-        """
-        if default is None:
-            return self.__groupdict
-        return {k: default if v is None else v for k, v in self.__groupdict.items()}
-
-    def start(self) -> int:
-        """Return the indice of the start of the substring matched by `group`."""
-        return self.__span[0]
-
-    def end(self) -> int:
-        """Return the indice of the end of the substring matched by `group`."""
-        return self.__span[1]
+def find_bracket_depth(brackets: str, string: str) -> int:
+    """Find the maximum depth of pairs of brackets."""
+    left, right = brackets
+    depth_now, depth_max = 0, 0
+    for c in string:
+        if c == left:
+            depth_now += 1
+            depth_max = max(depth_max, depth_now)
+        elif c == right and depth_now > 0:
+            depth_now -= 1
+    return depth_max
 
 
 # ==============================================================================
@@ -175,30 +105,19 @@ def search(pattern: "PatternType", string: str, flags: "FlagType" = 0) -> "Match
 
     Returns
     -------
-    Union[Match[str], SmartMatch[str], None]
+    MatchType
         Match result.
 
     """
     if isinstance(pattern, (str, re.Pattern)):
         return re.search(pattern, string, flags=flags)
     p, f = pattern.pattern, pattern.flags | flags
-    if pattern.ignore_mark not in p:
-        return re.search(p, string, flags=f)
-    to_search = p.partition(pattern.ignore_mark)[0]
-    pos_now: int = 0
-    while string and (searched := re.search(to_search, string, flags=f)):
-        pos_now += searched.start()
-        string = string[searched.start() :]
-        if matched := match(pattern, string, flags=flags):
-            return SmartMatch(
-                (pos_now, pos_now + matched.end()),
-                matched.group(),
-                matched.groups(),
-                matched.groupdict(),
-            )
-        pos_now += 1
-        string = string[1:]
-    return None
+    substrs = re.split("({.*?})", p)
+    for x in substrs:
+        if not len(x) == 4:
+            raise ValueError(f"invalid smart pattern: {x}")
+        s, e = re.escape(x[1]), re.escape(x[2])
+        neg = f"[^{s}{e}]"
 
 
 def match(pattern: "PatternType", string: str, flags: "FlagType" = 0) -> "MatchType":
