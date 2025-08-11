@@ -82,7 +82,7 @@ class SmartPattern:
                 neg = f"[^{s}{e}]"
                 p = f"{s}{neg}*{e}"
                 for _ in range(1, find_bracket_depth(x[1], x[2], string)):
-                    p += "|" + f"{s}{neg}*{p}{neg}*{e}"
+                    p = f"{s}{neg}*(?:{p}{neg}*)*{e}"
                 new_pattern += f"(?:{p})"
                 is_smart_pattern = False
             else:
