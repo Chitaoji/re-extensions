@@ -71,9 +71,8 @@ class SmartPattern:
         self.flags = flags
 
 
-def find_bracket_depth(brackets: str, string: str) -> int:
+def find_bracket_depth(left: str, right: str, string: str) -> int:
     """Find the maximum depth of pairs of brackets."""
-    left, right = brackets
     depth_now, depth_max = 0, 0
     for c in string:
         if c == left:
@@ -111,13 +110,24 @@ def search(pattern: "PatternType", string: str, flags: "FlagType" = 0) -> "Match
     """
     if isinstance(pattern, (str, re.Pattern)):
         return re.search(pattern, string, flags=flags)
+    if not isinstance(pattern, SmartPattern):
+        raise TypeError(f"invalid pattern type: {type(pattern)}")
     p, f = pattern.pattern, pattern.flags | flags
     substrs = re.split("({.*?})", p)
+    is_smart_pattern, new_pattern = False, ""
     for x in substrs:
-        if not len(x) == 4:
-            raise ValueError(f"invalid smart pattern: {x}")
-        s, e = re.escape(x[1]), re.escape(x[2])
-        neg = f"[^{s}{e}]"
+        if is_smart_pattern:
+            if not len(x) == 4:
+                raise ValueError(f"invalid smart pattern: {x}")
+            s, e = re.escape(x[1]), re.escape(x[2])
+            neg = f"[^{s}{e}]"
+            depth = find_bracket_depth(x[1], x[2], string)
+            new_pattern += f"{s}{neg}*{e}"
+            is_smart_pattern = False
+        else:
+            new_pattern += x
+            is_smart_pattern = True
+    return re.search(new_pattern, string, flags=f)
 
 
 def match(pattern: "PatternType", string: str, flags: "FlagType" = 0) -> "MatchType":
