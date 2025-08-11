@@ -70,6 +70,30 @@ class SmartPattern:
         self.pattern = pattern
         self.flags = flags
 
+    def get_pattern(self, string: str, /) -> str:
+        """Get the real pattern according to the string."""
+        substrs = re.split("({.*?})", self.pattern)
+        is_smart_pattern, new_pattern = False, ""
+        for x in substrs:
+            if is_smart_pattern:
+                if not len(x) == 4:
+                    raise ValueError(f"invalid subpattern: {x}")
+                s, e = re.escape(x[1]), re.escape(x[2])
+                neg = f"[^{s}{e}]"
+                p = f"{s}{neg}*{e}"
+                for _ in range(1, find_bracket_depth(x[1], x[2], string)):
+                    p += "|" + f"{s}{neg}*{p}{neg}*{e}"
+                new_pattern += f"(?:{p})"
+                is_smart_pattern = False
+            else:
+                new_pattern += x
+                is_smart_pattern = True
+        return new_pattern
+
+    def get_flags(self, flags: "FlagType", /) -> "FlagType":
+        """Get the real flags."""
+        return self.flags | flags
+
 
 def find_bracket_depth(left: str, right: str, string: str) -> int:
     """Find the maximum depth of pairs of brackets."""
@@ -112,22 +136,9 @@ def search(pattern: "PatternType", string: str, flags: "FlagType" = 0) -> "Match
         return re.search(pattern, string, flags=flags)
     if not isinstance(pattern, SmartPattern):
         raise TypeError(f"invalid pattern type: {type(pattern)}")
-    p, f = pattern.pattern, pattern.flags | flags
-    substrs = re.split("({.*?})", p)
-    is_smart_pattern, new_pattern = False, ""
-    for x in substrs:
-        if is_smart_pattern:
-            if not len(x) == 4:
-                raise ValueError(f"invalid smart pattern: {x}")
-            s, e = re.escape(x[1]), re.escape(x[2])
-            neg = f"[^{s}{e}]"
-            depth = find_bracket_depth(x[1], x[2], string)
-            new_pattern += f"{s}{neg}*{e}"
-            is_smart_pattern = False
-        else:
-            new_pattern += x
-            is_smart_pattern = True
-    return re.search(new_pattern, string, flags=f)
+    return re.search(
+        pattern.get_pattern(string), string, flags=pattern.get_flags(flags)
+    )
 
 
 def match(pattern: "PatternType", string: str, flags: "FlagType" = 0) -> "MatchType":
@@ -152,32 +163,9 @@ def match(pattern: "PatternType", string: str, flags: "FlagType" = 0) -> "MatchT
     """
     if isinstance(pattern, (str, re.Pattern)):
         return re.match(pattern, string, flags=flags)
-    p, f = pattern.pattern, pattern.flags | flags
-    if len(splited := p.split(pattern.ignore_mark)) == 1:
-        return re.match(p, string, flags=f)
-    crossline = (f & re.DOTALL) > 0
-    pos_now, temp, substr, left, groups, gdict = 0, "", "", pattern.ignore[::2], [], {}
-    for s in splited[:-1]:
-        temp += s
-        if not (matched := re.match(temp, string, flags=f)):
-            return None
-        if matched.end() < len(string) and string[matched.end()] in left:
-            n = find_right_bracket(string, matched.end(), crossline=crossline)
-            if n < 0:
-                return None
-            pos_now += n
-            substr += string[:n]
-            string = string[n:]
-            groups.extend(matched.groups())
-            gdict.update(matched.groupdict())
-            temp = ""
-    if matched := re.match(temp + splited[-1], string, flags=f):
-        groups.extend(matched.groups())
-        gdict.update(matched.groupdict())
-        return SmartMatch(
-            (0, pos_now + matched.end()), substr + matched.group(), groups, gdict
-        )
-    return None
+    if not isinstance(pattern, SmartPattern):
+        raise TypeError(f"invalid pattern type: {type(pattern)}")
+    return re.match(pattern.get_pattern(string), string, flags=pattern.get_flags(flags))
 
 
 def fullmatch(
@@ -274,13 +262,11 @@ def findall(pattern: "PatternType", string: str, flags: "FlagType" = 0) -> list[
     """
     if isinstance(pattern, (str, re.Pattern)):
         return re.findall(pattern, string, flags=flags)
-    finds: list[str] = []
-    while searched := search(pattern, string, flags=flags):
-        finds.append(searched.group())
-        if not string:
-            break
-        string = string[1 if searched.end() == 0 else searched.end() :]
-    return finds
+    if not isinstance(pattern, SmartPattern):
+        raise TypeError(f"invalid pattern type: {type(pattern)}")
+    return re.findall(
+        pattern.get_pattern(string), string, flags=pattern.get_flags(flags)
+    )
 
 
 def sub(
