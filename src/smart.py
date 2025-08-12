@@ -493,11 +493,14 @@ def rsplit(
         if not isinstance(pattern, SmartPattern):
             raise TypeError(f"invalid pattern type: {type(pattern)}")
         pattern, flags = pattern.get_pattern(string), pattern.get_flags(flags)
-    splits = re.split(pattern, string, flags=flags)
+    splits = re.split(pattern, string, maxsplit=maxsplit, flags=flags)
+    idxmax = len(splits) - 1
     new_splits: list[str] = [splits[0]]
     idx = 0
     for f in re.finditer(pattern, string, flags=flags):
         idx += 1 + len(f.groups())
+        if idx > idxmax:
+            break
         new_splits.append(f.group() + splits[idx])
     return new_splits
 
@@ -536,13 +539,17 @@ def lsplit(
         if not isinstance(pattern, SmartPattern):
             raise TypeError(f"invalid pattern type: {type(pattern)}")
         pattern, flags = pattern.get_pattern(string), pattern.get_flags(flags)
-    splits = re.split(pattern, string, flags=flags)
+    splits = re.split(pattern, string, maxsplit=maxsplit, flags=flags)
+    idxmax = len(splits) - 1
     new_splits: list[str] = []
     idx = 0
     for f in re.finditer(pattern, string, flags=flags):
         new_splits.append(splits[idx] + f.group())
         idx += 1 + len(f.groups())
-    new_splits.append(splits[-1])
+        if idx > idxmax:
+            break
+    else:
+        new_splits.append(splits[-1])
     return new_splits
 
 
