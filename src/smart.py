@@ -1,8 +1,7 @@
 """
 Namespace for smart operations.
 
-NOTE: this module is not included in the main `re_extensions` namespace - run
-`from re_extensions import smart` to use this module.
+NOTE: run `from re_extensions import smart` to use this module.
 
 """
 
