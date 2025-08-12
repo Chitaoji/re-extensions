@@ -7,9 +7,7 @@ NOTE: this module is not included in the main `re_extensions` namespace - run
 """
 
 import re
-from typing import TYPE_CHECKING, Generator, Iterator, TypeVar
-
-from .core import find_right_bracket
+from typing import TYPE_CHECKING, Iterator, TypeVar
 
 if TYPE_CHECKING:
     from re import Pattern
@@ -157,7 +155,7 @@ def match(pattern: "PatternType", string: str, flags: "FlagType" = 0) -> "MatchT
 
     Returns
     -------
-    Union[Match[str], SmartMatch[str], None]
+    MatchType
         Match result.
 
     """
@@ -186,13 +184,17 @@ def fullmatch(
 
     Returns
     -------
-    Union[Match[str], SmartMatch[str], None]
+    MatchType
         Match result.
 
     """
     if isinstance(pattern, (str, re.Pattern)):
         return re.fullmatch(pattern, string, flags=flags)
-    return match(f"(?:{pattern.pattern})\\Z", string, flags=pattern.flags | flags)
+    if not isinstance(pattern, SmartPattern):
+        raise TypeError(f"invalid pattern type: {type(pattern)}")
+    return re.fullmatch(
+        pattern.get_pattern(string), string, flags=pattern.get_flags(flags)
+    )
 
 
 def finditer(
@@ -220,24 +222,11 @@ def finditer(
     """
     if isinstance(pattern, (str, re.Pattern)):
         return re.finditer(pattern, string, flags=flags)
-    return _find_generator(pattern, string, flags=flags)
-
-
-def _find_generator(
-    pattern: "PatternType", string: str, flags: "FlagType" = 0
-) -> Generator["MatchType", None, None]:
-    pos_now = 0
-    while searched := search(pattern, string, flags=flags):
-        yield SmartMatch(
-            (pos_now + searched.start(), pos_now + searched.end()),
-            searched.group(),
-            searched.groups(),
-            searched.groupdict(),
-        )
-        if not string:
-            break
-        pos_now += (n := 1 if searched.end() == 0 else searched.end())
-        string = string[n:]
+    if not isinstance(pattern, SmartPattern):
+        raise TypeError(f"invalid pattern type: {type(pattern)}")
+    return re.finditer(
+        pattern.get_pattern(string), string, flags=pattern.get_flags(flags)
+    )
 
 
 def findall(pattern: "PatternType", string: str, flags: "FlagType" = 0) -> list[str]:
@@ -305,20 +294,15 @@ def sub(
     """
     if isinstance(pattern, (str, re.Pattern)):
         return re.sub(pattern, repl, string, count=count, flags=flags)
-    if count < 0:
-        return string
-    new_string = ""
-    while searched := search(pattern, string, flags=flags):
-        new_string += string[: searched.start()]
-        new_string += repl if isinstance(repl, str) else repl(searched)
-        if not string or (count := count - 1) == 0:
-            break
-        if searched.end() == 0:
-            new_string += string[0]
-            string = string[1:]
-        else:
-            string = string[searched.end() :]
-    return new_string + string
+    if not isinstance(pattern, SmartPattern):
+        raise TypeError(f"invalid pattern type: {type(pattern)}")
+    return re.sub(
+        pattern.get_pattern(string),
+        repl,
+        string,
+        count=count,
+        flags=pattern.get_flags(flags),
+    )
 
 
 def subn(
@@ -359,21 +343,15 @@ def subn(
     """
     if isinstance(pattern, (str, re.Pattern)):
         return re.subn(pattern, repl, string, count=count, flags=flags)
-    if count < 0:
-        return (string, 0)
-    new_string = ""
-    tmpcnt = count
-    while searched := search(pattern, string, flags=flags):
-        new_string += string[: searched.start()]
-        new_string += repl if isinstance(repl, str) else repl(searched)
-        if (tmpcnt := tmpcnt - 1) == 0 or not string:
-            break
-        if searched.end() == 0:
-            new_string += string[0]
-            string = string[1:]
-        else:
-            string = string[searched.end() :]
-    return (new_string + string, count - tmpcnt)
+    if not isinstance(pattern, SmartPattern):
+        raise TypeError(f"invalid pattern type: {type(pattern)}")
+    return re.subn(
+        pattern.get_pattern(string),
+        repl,
+        string,
+        count=count,
+        flags=pattern.get_flags(flags),
+    )
 
 
 def split(
@@ -408,30 +386,14 @@ def split(
     """
     if isinstance(pattern, (str, re.Pattern)):
         return re.split(pattern, string, maxsplit=maxsplit, flags=flags)
-    if maxsplit < 0 or not (searched := search(pattern, string, flags=flags)):
-        return [string]
-    splits = []
-    stored = ""
-    while searched and string:
-        if searched.end() == 0:
-            splits.append(stored)
-            stored = string[0]
-            string = string[1:]
-        else:
-            splits.append(stored + string[: searched.start()])
-            stored = ""
-            string = string[searched.end() :]
-        if (maxsplit := maxsplit - 1) == 0:
-            break
-        searched = search(pattern, string, flags=flags)
-    else:  # not searched or not string
-        if searched:  # not string but searched
-            splits.append(stored)
-            splits.append("")
-            return splits
-    # breaked or not searched
-    splits.append(stored + string)
-    return splits
+    if not isinstance(pattern, SmartPattern):
+        raise TypeError(f"invalid pattern type: {type(pattern)}")
+    return re.split(
+        pattern.get_pattern(string),
+        string,
+        maxsplit=maxsplit,
+        flags=pattern.get_flags(flags),
+    )
 
 
 def rsplit(
