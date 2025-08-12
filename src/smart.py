@@ -7,7 +7,7 @@ NOTE: this module is not included in the main `re_extensions` namespace - run
 """
 
 import re
-from typing import TYPE_CHECKING, Iterator, TypeVar
+from typing import TYPE_CHECKING, Iterable, Iterator, TypeVar
 
 if TYPE_CHECKING:
     from re import Pattern
@@ -32,8 +32,6 @@ __all__ = [
     "line_finditer",
     "line_findall",
 ]
-
-SmartMatch = lambda *x: x
 
 
 class SmartPattern:
@@ -91,6 +89,73 @@ class SmartPattern:
     def get_flags(self, flags: "FlagType", /) -> "FlagType":
         """Get the real flags."""
         return self.flags | flags
+
+
+class SmartMatch:
+    """
+    Acts like `re.Match`.
+
+    NOTE: properties `pos`, `endpos`, `lastindex`, `lastgroup`, `re`, and
+    `string` are not implemented for faster speed.
+
+    Parameters
+    ----------
+    span : tuple[int, int]
+        The indices of the start and end of the substring matched by `group`.
+    group : str
+        Group of the match.
+
+    """
+
+    def __init__(
+        self,
+        span: tuple[int, int],
+        group: str,
+        groups: Iterable[str],
+        groupdict: dict[str, str],
+    ) -> None:
+        self.__span = span
+        self.__group = group
+        self.__groups = tuple(groups)
+        self.__groupdict = groupdict
+
+    def __repr__(self) -> str:
+        return f"<SmartMatch object; span={self.__span}, match={self.__group!r}>"
+
+    def span(self) -> tuple[int, int]:
+        """
+        The indices of the start and end of the substring matched by `group`.
+
+        """
+        return self.__span
+
+    def group(self) -> str:
+        """Return one or more subgroups of the match of the match."""
+        return self.__group
+
+    def groups(self, default: T = None) -> tuple[str, ...]:
+        """Return a tuple containing all the subgroups of the match."""
+        if default is None:
+            return self.__groups
+        return tuple(default if x is None else x for x in self.__groups)
+
+    def groupdict(self, default: T = None) -> dict[str, str]:
+        """
+        Return a dictionary containing all the named subgroups of the match,
+        keyed by the subgroup name.
+
+        """
+        if default is None:
+            return self.__groupdict
+        return {k: default if v is None else v for k, v in self.__groupdict.items()}
+
+    def start(self) -> int:
+        """Return the indice of the start of the substring matched by `group`."""
+        return self.__span[0]
+
+    def end(self) -> int:
+        """Return the indice of the end of the substring matched by `group`."""
+        return self.__span[1]
 
 
 def find_bracket_depth(left: str, right: str, string: str) -> int:
