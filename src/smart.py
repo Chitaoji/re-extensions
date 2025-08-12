@@ -468,9 +468,8 @@ def rsplit(
     `smart_split()` that the matched substrings are also returned, each
     connected with the unmatched substring on its right.
 
-    NOTE: If the pattern is an instance of `SmartPattern`, any group
-    (...) in the pattern will be regarded as (?:...), so that the
-    substring matched by the group cannot be retrieved.
+    NOTE: any group (...) in the pattern will be regarded as (?:...), so
+    that the substring matched by the group cannot be retrieved.
 
     Parameters
     ----------
@@ -490,31 +489,17 @@ def rsplit(
         List of substrings.
 
     """
-    if maxsplit < 0 or not (searched := search(pattern, string, flags=flags)):
-        return [string]
-    splits = [""]
-    stored = ""
-    while searched and string:
-        if searched.end() == 0:
-            splits[-1] += stored
-            stored = string[0]
-            string = string[1:]
-        else:
-            splits[-1] += stored + string[: searched.start()]
-            stored = ""
-            string = string[searched.end() :]
-        splits.append(searched.group())
-        if (maxsplit := maxsplit - 1) == 0:
-            break
-        searched = search(pattern, string, flags=flags)
-    else:  # not searched or not string
-        if searched:  # not string but searched
-            splits[-1] += stored
-            splits.append("")
-            return splits
-    # breaked or not searched
-    splits[-1] += stored + string
-    return splits
+    if not isinstance(pattern, (str, re.Pattern)):
+        if not isinstance(pattern, SmartPattern):
+            raise TypeError(f"invalid pattern type: {type(pattern)}")
+        pattern, flags = pattern.get_pattern(string), pattern.get_flags(flags)
+    splits = re.split(pattern, string, flags=flags)
+    new_splits: list[str] = [splits[0]]
+    idx = 0
+    for f in re.finditer(pattern, string, flags=flags):
+        idx += 1 + len(f.groups())
+        new_splits.append(f.group() + splits[idx])
+    return new_splits
 
 
 def lsplit(
@@ -525,9 +510,8 @@ def lsplit(
     `smart_split()` that the matched substrings are also returned, each
     connected with the unmatched substring on its left.
 
-    NOTE: If the pattern is an instance of `SmartPattern`, any group
-    (...) in the pattern will be regarded as (?:...), so that the
-    substring matched by the group cannot be retrieved.
+    NOTE: any group (...) in the pattern will be regarded as (?:...), so
+    that the substring matched by the group cannot be retrieved.
 
     Parameters
     ----------
@@ -548,30 +532,18 @@ def lsplit(
 
     """
 
-    if maxsplit < 0 or not (searched := search(pattern, string, flags=flags)):
-        return [string]
-    splits = []
-    stored = string[: searched.start()]
-    while searched and string:
-        if searched.end() == 0:
-            splits.append(stored)
-            stored = string[0]
-            string = string[1:]
-        else:
-            splits.append(stored + string[: searched.end()])
-            stored = ""
-            string = string[searched.end() :]
-        if (maxsplit := maxsplit - 1) == 0:
-            break
-        searched = search(pattern, string, flags=flags)
-    else:  # not searched or not string
-        if searched:  # not string but searched
-            splits.append(stored)
-            splits.append("")
-            return splits
-    # breaked or not searched
-    splits.append(stored + string)
-    return splits
+    if not isinstance(pattern, (str, re.Pattern)):
+        if not isinstance(pattern, SmartPattern):
+            raise TypeError(f"invalid pattern type: {type(pattern)}")
+        pattern, flags = pattern.get_pattern(string), pattern.get_flags(flags)
+    splits = re.split(pattern, string, flags=flags)
+    new_splits: list[str] = []
+    idx = 0
+    for f in re.finditer(pattern, string, flags=flags):
+        new_splits.append(splits[idx] + f.group())
+        idx += 1 + len(f.groups())
+    new_splits.append(splits[-1])
+    return new_splits
 
 
 def line_finditer(
