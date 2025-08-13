@@ -22,6 +22,9 @@ $ pip install re-extensions
 This project falls under the BSD 3-Clause License.
 
 ## History
+### v0.0.8
+* Bugfix: Updated the required Python version to `3.12.7`.
+
 ### v0.0.7
 * Imported * from the `re_extensions.smart` namespace into the main `re_extensions` namespace.
 
