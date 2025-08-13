@@ -5,7 +5,7 @@ SUMMARY: Extensions for the `re` package.
 HOMEPAGE: https://github.com/Chitaoji/re-extensions/
 AUTHOR: Chitaoji
 AUTHOR_EMAIL: 2360742040@qq.com
-REQUIRES_PYTHON: ">=3.8.13"
+REQUIRES_PYTHON: ">=3.12.7"
 REQUIRES: []
 EXTRAS: {}
 SOURCE: src
